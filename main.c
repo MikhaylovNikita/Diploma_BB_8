@@ -1,20 +1,21 @@
 #include <ch.h>
 #include <hal.h>
 
-static THD_WORKING_AREA(waThread, 128);
-static THD_FUNCTION(Thread, arg) 
+void gpt3cb(GPTDriver *gptp)
 {
-    (void)arg;
-
-    while (true)
-    {
-        chThdSleepSeconds(1);
-    }
+    palTogglePad(GPIOB, GPIOB_LED1);
+    palTogglePad(GPIOB, GPIOB_LED2);
+    palTogglePad(GPIOB, GPIOB_LED3);
 }
 
-/*
- * Application entry point.
- */
+GPTConfig gpt3conf =
+{
+  .frequency = 10000,
+  .callback = gpt3cb,
+  .cr2 = 0,
+  .dier = 0
+};
+
 int main(void)
 {
     /*
@@ -27,10 +28,21 @@ int main(void)
     halInit();
     chSysInit();
 
-    chThdCreateStatic(waThread, sizeof(waThread), NORMALPRIO, Thread, NULL /* arg is NULL */);
+    palSetPad(GPIOB, GPIOB_LED1);
+    chThdSleepMilliseconds(200);
+    palClearPad(GPIOB, GPIOB_LED1);
+    palSetPad(GPIOB, GPIOB_LED2);
+    chThdSleepMilliseconds(200);
+    palClearPad(GPIOB, GPIOB_LED2);
+    palSetPad(GPIOB, GPIOB_LED3);
+    chThdSleepMilliseconds(200);
+    palClearPad(GPIOB, GPIOB_LED3);
+
+    gptStart(&GPTD3, &gpt3conf);
+    gptStartContinuous(&GPTD3, gpt3conf.frequency/4);
 
     while (true)
     {
-        chThdSleepSeconds(1);
+
     }
 }
