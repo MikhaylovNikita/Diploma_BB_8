@@ -2,21 +2,51 @@
 #include <hal.h>
 #include <chprintf.h>
 
-static PWMConfig pwmcfg = {
-    .frequency = 70000,
-    .period = 1000,
-    .callback = NULL,
-    .channels = {
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
-        {.mode = PWM_COMPLEMENTARY_OUTPUT_ACTIVE_HIGH, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
-    },
-    .cr2 = 0,
-    .dier = 0
+#define ADC1_NUM_CHANNELS   1
+#define ADC1_BUF_DEPTH      1
+
+static adcsample_t samples1[ADC1_NUM_CHANNELS * ADC1_BUF_DEPTH];
+
+static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
+{
+    (void)adcp;
+    (void)buffer;
+    (void)n;
+    chprintf((BaseSequentialStream*)&SD7, "%d\r\n", samples1[0]);
+}
+
+static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
+{
+    (void)adcp;
+    (void)err;
+    chprintf((BaseSequentialStream*)&SD7, "ERROR\r\n");
+}
+
+static const ADCConversionGroup adcgrpcfg1 =
+{
+    .circular     = true,                                           // working mode = looped
+    .num_channels = ADC1_NUM_CHANNELS,
+    .end_cb       = adccallback,
+    .error_cb     = adcerrorcallback,
+    .cr1          = 0,
+    .cr2          = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1100),  // Commutated from GPT
+    .smpr1        = ADC_SMPR1_SMP_AN10(ADC_SAMPLE_144),             // for AN10 - 144 samples
+    .smpr2        = 0,
+    .sqr1         = ADC_SQR1_NUM_CH(ADC1_NUM_CHANNELS),
+    .sqr2         = 0,
+    .sqr3         = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN10)
 };
 
-static const SerialConfig sdcfg = {
+static GPTConfig gpt4cfg1 =
+{
+    .frequency = 100000,
+    .callback  = NULL,
+    .cr2       = TIM_CR2_MMS_1,
+    .dier      = 0
+};
+
+static const SerialConfig sdcfg =
+{
     .speed  = 115200,
     .cr1    = 0,
     .cr2    = 0,
@@ -25,7 +55,6 @@ static const SerialConfig sdcfg = {
 
 int main(void)
 {
-    char i = 0;
     /*
      * System initializations.
      * - HAL initialization, this also initializes the configured device drivers
@@ -36,41 +65,18 @@ int main(void)
     halInit();
     chSysInit();
 
-    palSetPadMode(GPIOB, GPIOB_LED1, PAL_MODE_ALTERNATE(1));
-    pwmStart(&PWMD1, &pwmcfg);
-
+    gptStart(&GPTD4, &gpt4cfg1);
+    adcStart(&ADCD1, NULL);
     sdStart(&SD7, &sdcfg);
     palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
     palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
+    palSetLineMode(LINE_ADC123_IN10, PAL_MODE_INPUT_ANALOG);
 
-    chprintf((BaseSequentialStream*)&SD7, "Sample text\r\n");
+    adcStartConversion(&ADCD1, &adcgrpcfg1, samples1, ADC1_BUF_DEPTH);
+    gptStartContinuous(&GPTD4, gpt4cfg1.frequency);
 
     while (true)
     {
-        pwmEnableChannel(&PWMD1, 1, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, i*1000));
-        while (true)
-        {
-            pwmEnableChannel(&PWMD1, 1, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, i*1000));
-            chThdSleepMilliseconds(100);
-            i++;
-            chprintf((BaseSequentialStream*)&SD7, "%d\r\n", i*10);
-            if(i >= 10)
-            {
-                i = 10;
-                break;
-            }
-        }
-        while (true)
-        {
-            pwmEnableChannel(&PWMD1, 1, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, i*1000));
-            chThdSleepMilliseconds(100);
-            i--;
-            chprintf((BaseSequentialStream*)&SD7, "%d\r\n", i*10);
-            if(i <= 0)
-            {
-               i = 0;
-               break;
-            }
-        }
+
     }
 }
