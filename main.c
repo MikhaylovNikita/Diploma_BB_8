@@ -12,7 +12,7 @@ static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
     (void)adcp;
     (void)buffer;
     (void)n;
-    chprintf((BaseSequentialStream*)&SD7, "%d\r\n", samples1[0]);
+    chprintf((BaseSequentialStream*)&SD7, "%d\n", samples1[0]);
 }
 
 static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
