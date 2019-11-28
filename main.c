@@ -2,12 +2,27 @@
 #include <hal.h>
 #include <chprintf.h>
 
-uint32_t width = 0;
+uint32_t width_1 = 0;
+uint32_t width_2 = 0;
 
-static void icucb(ICUDriver *icup)
+thread_reference_t trp;
+
+static void icucb1(ICUDriver *icup)
 {
-  width = icuGetWidthX(icup);
-  chprintf((BaseSequentialStream*)&SD7, "%d\r\n", width);
+    chSysLockFromISR();
+    width_1 = icuGetWidthX(icup);
+    chprintf((BaseSequentialStream*)&SD7, "PWM1 = %d    ", width_1);
+    chThdResumeI(&trp, (msg_t)NULL);
+    chSysUnlockFromISR();
+}
+
+static void icucb2(ICUDriver *icup)
+{
+    chSysLockFromISR();
+    width_2 = icuGetWidthX(icup);
+    chprintf((BaseSequentialStream*)&SD7, "PWM2 = %d\r\n", width_2);
+    chThdResumeI(&trp, (msg_t)NULL);
+    chSysUnlockFromISR();
 }
 
 static PWMConfig pwmcfg = {
@@ -16,7 +31,7 @@ static PWMConfig pwmcfg = {
     .callback = NULL,
     .channels = {
         {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
+        {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
         {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
         {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
     },
@@ -31,15 +46,42 @@ static const SerialConfig sdcfg = {
     .cr3    = 0
 };
 
-static const ICUConfig icucfg = {
+static const ICUConfig icucfg1 = {
     .mode         = ICU_INPUT_ACTIVE_HIGH,
     .frequency    = 100000,
-    .width_cb     = icucb,
+    .width_cb     = icucb1,
     .period_cb    = NULL,
     .overflow_cb  = NULL,
     .channel      = ICU_CHANNEL_1,
     .dier         = 0
 };
+
+static const ICUConfig icucfg2 = {
+    .mode         = ICU_INPUT_ACTIVE_HIGH,
+    .frequency    = 100000,
+    .width_cb     = icucb2,
+    .period_cb    = NULL,
+    .overflow_cb  = NULL,
+    .channel      = ICU_CHANNEL_1,
+    .dier         = 0
+};
+
+static THD_WORKING_AREA(MainThread, 128);
+static THD_FUNCTION(LED, arg)
+{
+    chSysLock();
+    (void)arg;
+    msg_t msg;
+    while (true)
+    {
+        msg = chThdSuspendTimeoutS(&trp, MS2ST(50));
+        if (msg == MSG_OK)
+            palSetPad(GPIOB, GPIOB_LED3);
+        else if (msg == MSG_TIMEOUT)
+            palClearPad(GPIOB, GPIOB_LED3);
+        chSysUnlock();
+    }
+}
 
 int main(void)
 {
@@ -55,24 +97,27 @@ int main(void)
 
     pwmStart(&PWMD1, &pwmcfg);
     palSetPadMode(GPIOE, 9, PAL_MODE_ALTERNATE(1));
+    palSetPadMode(GPIOE, 11, PAL_MODE_ALTERNATE(1));
+    pwmEnableChannel(&PWMD1, 0, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 3000));
+    pwmEnableChannel(&PWMD1, 1, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 7000));
 
     sdStart(&SD7, &sdcfg);
     palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
     palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
 
-    icuStart(&ICUD2, &icucfg);
-    palSetPadMode(GPIOA, 0, PAL_MODE_ALTERNATE(1));
+    icuStart(&ICUD2, &icucfg1);
+    palSetPadMode(GPIOA, 5, PAL_MODE_ALTERNATE(1));
     icuStartCapture(&ICUD2);
     icuEnableNotifications(&ICUD2);
+    icuStart(&ICUD5, &icucfg2);
+    palSetPadMode(GPIOA, 0, PAL_MODE_ALTERNATE(2));
+    icuStartCapture(&ICUD5);
+    icuEnableNotifications(&ICUD5);
 
-    char i = 0;
+    trp = chThdCreateStatic(MainThread, sizeof(MainThread), NORMALPRIO + 1, LED, NULL);
 
     while (true)
     {
-        for (i = 1; i < 10; i++)
-        {
-            pwmEnableChannel(&PWMD1, 0, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, i*1000));
-            chThdSleepMilliseconds(100);
-        }
+
     }
 }
