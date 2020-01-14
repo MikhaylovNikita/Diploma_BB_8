@@ -9,11 +9,6 @@ thread_reference_t trp;
 
 static void icucb1(ICUDriver *icup)
 {
-	// no need to put everything into Critical Zone 
-	// better put only chThdResumeI()
-    // chSysLockFromISR();
-    // because you kind of interrupt the interrupt 
-    // be careful with usage of Critical Zones 
     width_1 = icuGetWidthX(icup);
     chprintf((BaseSequentialStream*)&SD7, "PWM1 = %d    ", width_1);
     chSysLockFromISR();
@@ -23,8 +18,6 @@ static void icucb1(ICUDriver *icup)
 
 static void icucb2(ICUDriver *icup)
 {
-	// here the same 
-    // chSysLockFromISR();
     width_2 = icuGetWidthX(icup);
     chprintf((BaseSequentialStream*)&SD7, "PWM2 = %d\r\n", width_2);
     chSysLockFromISR();
@@ -73,20 +66,12 @@ static const ICUConfig icucfg2 = {
     .dier         = 0
 };
 
-// 128 - buffer size 
-// if in the future you will miss data, 
-// maybe you should increase the buffer size (256 || 512 etc.)
-static THD_WORKING_AREA(MainThread, 128);
-// it is easy to read code if working area of thread 
-// and name of thread have the same part 
-// for example, if thread name is MainThread, 
-// working area of thread is waMainThread
-static THD_FUNCTION(LED, arg)
+/*
+ * LED blinking thread
+ */
+static THD_WORKING_AREA(waMainThread, 256);
+static THD_FUNCTION(MainThread, arg)
 {
-	// you need to detect only resuming of callback 
-	// so it is enough to put chThdSuspendTimeoutS 
-	// into Critical Zone
-    // chSysLock();
     (void)arg;
     msg_t msg;
     while (true)
@@ -98,22 +83,27 @@ static THD_FUNCTION(LED, arg)
             palSetPad(GPIOB, GPIOB_LED3);
         else if (msg == MSG_TIMEOUT)
             palClearPad(GPIOB, GPIOB_LED3);
-        // chSysUnlock();
     }
 }
 
 static bool isInitialized = false; 
-
-void icuInit()
+void icu_Init(void)
 {
-	// protection for repeated call of function 
-	if( isInitialized )
-		return;
+    // protection for repeated call of function
+    if( isInitialized )
+        return;
 
-	/*
-		Add initialization of icu unit 
-	*/
+    icuStart(&ICUD2, &icucfg1);
+    palSetPadMode(GPIOA, 5, PAL_MODE_ALTERNATE(1));
+    icuStartCapture(&ICUD2);
+    icuEnableNotifications(&ICUD2);
 
+    icuStart(&ICUD5, &icucfg2);
+    palSetPadMode(GPIOA, 0, PAL_MODE_ALTERNATE(2));
+    icuStartCapture(&ICUD5);
+    icuEnableNotifications(&ICUD5);
+
+    isInitialized = true;
 }
 
 int main(void)
@@ -138,16 +128,9 @@ int main(void)
     palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
     palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
 
-    icuStart(&ICUD2, &icucfg1);
-    palSetPadMode(GPIOA, 5, PAL_MODE_ALTERNATE(1));
-    icuStartCapture(&ICUD2);
-    icuEnableNotifications(&ICUD2);
-    icuStart(&ICUD5, &icucfg2);
-    palSetPadMode(GPIOA, 0, PAL_MODE_ALTERNATE(2));
-    icuStartCapture(&ICUD5);
-    icuEnableNotifications(&ICUD5);
+    icu_Init();
 
-    trp = chThdCreateStatic(MainThread, sizeof(MainThread), NORMALPRIO + 1, LED, NULL);
+    trp = chThdCreateStatic(waMainThread, sizeof(waMainThread), NORMALPRIO + 1, MainThread, NULL);
 
     while (true)
     {
