@@ -2,109 +2,62 @@
 #include <hal.h>
 #include <chprintf.h>
 
-uint32_t width_1 = 0;
-uint32_t width_2 = 0;
+#define ADC1_NUM_CHANNELS   1
+#define ADC1_BUF_DEPTH      1
 
-thread_reference_t trp;
+static adcsample_t samples1[ADC1_NUM_CHANNELS * ADC1_BUF_DEPTH];
+static float cutoff = 0.5;
+adcsample_t newsample;
+adcsample_t bufsample = 0;
 
-static void icucb1(ICUDriver *icup)
+static void adccallback(ADCDriver *adcp, adcsample_t *buffer, size_t n)
 {
-    width_1 = icuGetWidthX(icup);
-    chprintf((BaseSequentialStream*)&SD7, "PWM1 = %d    ", width_1);
-    chSysLockFromISR();
-    chThdResumeI(&trp, (msg_t)NULL);
-    chSysUnlockFromISR();
+    (void)adcp;
+    (void)buffer;
+    (void)n;
+    chprintf((BaseSequentialStream*)&SD7, "%d\n", samples1[0]);
+    newsample = bufsample * (1 - cutoff) + samples1[0] * cutoff;
+    chprintf((BaseSequentialStream*)&SD7, "%d\n", newsample);
+    bufsample = samples1[0];
 }
 
-static void icucb2(ICUDriver *icup)
+static void adcerrorcallback(ADCDriver *adcp, adcerror_t err)
 {
-    width_2 = icuGetWidthX(icup);
-    chprintf((BaseSequentialStream*)&SD7, "PWM2 = %d\r\n", width_2);
-    chSysLockFromISR();
-    chThdResumeI(&trp, (msg_t)NULL);
-    chSysUnlockFromISR();
+    (void)adcp;
+    (void)err;
+    chprintf((BaseSequentialStream*)&SD7, "ERROR\r\n");
 }
 
-static PWMConfig pwmcfg = {
-    .frequency = 10000,
-    .period = 1000,
-    .callback = NULL,
-    .channels = {
-        {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
-        {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
-    },
-    .cr2 = 0,
-    .dier = 0
+static const ADCConversionGroup adcgrpcfg1 =
+{
+    .circular     = true,                                           // working mode = looped
+    .num_channels = ADC1_NUM_CHANNELS,
+    .end_cb       = adccallback,
+    .error_cb     = adcerrorcallback,
+    .cr1          = 0,
+    .cr2          = ADC_CR2_EXTEN_RISING | ADC_CR2_EXTSEL_SRC(0b1100),  // Commutated from GPT
+    .smpr1        = ADC_SMPR1_SMP_AN10(ADC_SAMPLE_144),             // for AN10 - 144 samples
+    .smpr2        = 0,
+    .sqr1         = ADC_SQR1_NUM_CH(ADC1_NUM_CHANNELS),
+    .sqr2         = 0,
+    .sqr3         = ADC_SQR3_SQ1_N(ADC_CHANNEL_IN10)
 };
 
-static const SerialConfig sdcfg = {
+static GPTConfig gpt4cfg1 =
+{
+    .frequency = 100000,
+    .callback  = NULL,
+    .cr2       = TIM_CR2_MMS_1,
+    .dier      = 0
+};
+
+static const SerialConfig sdcfg =
+{
     .speed  = 115200,
     .cr1    = 0,
     .cr2    = 0,
     .cr3    = 0
 };
-
-static const ICUConfig icucfg1 = {
-    .mode         = ICU_INPUT_ACTIVE_HIGH,
-    .frequency    = 100000,
-    .width_cb     = icucb1,
-    .period_cb    = NULL,
-    .overflow_cb  = NULL,
-    .channel      = ICU_CHANNEL_1,
-    .dier         = 0
-};
-
-static const ICUConfig icucfg2 = {
-    .mode         = ICU_INPUT_ACTIVE_HIGH,
-    .frequency    = 100000,
-    .width_cb     = icucb2,
-    .period_cb    = NULL,
-    .overflow_cb  = NULL,
-    .channel      = ICU_CHANNEL_1,
-    .dier         = 0
-};
-
-/*
- * LED blinking thread
- */
-static THD_WORKING_AREA(waMainThread, 256);
-static THD_FUNCTION(MainThread, arg)
-{
-    (void)arg;
-    msg_t msg;
-    while (true)
-    {
-    	chSysLock();
-        msg = chThdSuspendTimeoutS(&trp, MS2ST(50));
-        chSysUnlock();
-        if (msg == MSG_OK)
-            palSetPad(GPIOB, GPIOB_LED3);
-        else if (msg == MSG_TIMEOUT)
-            palClearPad(GPIOB, GPIOB_LED3);
-    }
-}
-
-static bool isInitialized = false; 
-void icu_Init(void)
-{
-    // protection for repeated call of function
-    if( isInitialized )
-        return;
-
-    icuStart(&ICUD2, &icucfg1);
-    palSetPadMode(GPIOA, 5, PAL_MODE_ALTERNATE(1));
-    icuStartCapture(&ICUD2);
-    icuEnableNotifications(&ICUD2);
-
-    icuStart(&ICUD5, &icucfg2);
-    palSetPadMode(GPIOA, 0, PAL_MODE_ALTERNATE(2));
-    icuStartCapture(&ICUD5);
-    icuEnableNotifications(&ICUD5);
-
-    isInitialized = true;
-}
 
 int main(void)
 {
@@ -118,19 +71,15 @@ int main(void)
     halInit();
     chSysInit();
 
-    pwmStart(&PWMD1, &pwmcfg);
-    palSetPadMode(GPIOE, 9, PAL_MODE_ALTERNATE(1));
-    palSetPadMode(GPIOE, 11, PAL_MODE_ALTERNATE(1));
-    pwmEnableChannel(&PWMD1, 0, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 3000));
-    pwmEnableChannel(&PWMD1, 1, PWM_PERCENTAGE_TO_WIDTH(&PWMD1, 7000));
-
+    gptStart(&GPTD4, &gpt4cfg1);
+    adcStart(&ADCD1, NULL);
     sdStart(&SD7, &sdcfg);
     palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
     palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
+    palSetLineMode(LINE_ADC123_IN10, PAL_MODE_INPUT_ANALOG);
 
-    icu_Init();
-
-    trp = chThdCreateStatic(waMainThread, sizeof(waMainThread), NORMALPRIO + 1, MainThread, NULL);
+    adcStartConversion(&ADCD1, &adcgrpcfg1, samples1, ADC1_BUF_DEPTH);
+    gptStartContinuous(&GPTD4, gpt4cfg1.frequency);
 
     while (true)
     {
