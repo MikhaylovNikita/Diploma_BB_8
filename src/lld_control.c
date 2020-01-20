@@ -1,6 +1,8 @@
-#include <ch.h>
-#include <hal.h>
+#include <common.h>
 #include <lld_control.h>
+
+#define PWM1_CH0 PAL_LINE(GPIOE, 9)
+#define PWM1_CH1 PAL_LINE(GPIOE, 11)
 
 static PWMConfig pwm1conf = {
     .frequency = pwmfreq,
@@ -16,28 +18,6 @@ static PWMConfig pwm1conf = {
     .dier = 0
 };
 
-static const SerialConfig sd7conf = {
-    .speed  = 115200,
-    .cr1    = 0,
-    .cr2    = 0,
-    .cr3    = 0
-};
-
-/**
- * @brief          Limits input value
- * @param   val    Input value
- * @param   low    Lower limit
- * @param   high   Upper limit
- */
-int64_t ValLimit(int64_t val, int64_t low, int64_t high)
-{
-    if (val > high)
-        val = high;
-    else if (val < low)
-        val = low;
-    return val;
-}
-
 static bool isInitialized = false;
 
 /**
@@ -46,16 +26,12 @@ static bool isInitialized = false;
  */
 void lldControlInit(void)
 {
-    if ( isInitialized )
+    if (isInitialized)
             return;
 
-    palSetPadMode(GPIOE, 9, PAL_MODE_ALTERNATE(1));
-    palSetPadMode(GPIOE, 11, PAL_MODE_ALTERNATE(1));
+    palSetLineMode(PWM1_CH0, PAL_MODE_ALTERNATE(1));
+    palSetLineMode(PWM1_CH1, PAL_MODE_ALTERNATE(1));
     pwmStart(&PWMD1, &pwm1conf);
-
-    palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
-    palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
-    sdStart(&SD7, &sd7conf);
 
     isInitialized = true;
 }
@@ -63,15 +39,15 @@ void lldControlInit(void)
 /**
  * @brief              Set power for motor
  * @note               Changing raw values of pwm dutycycle
- * @param   pwmWidth   Motor power value [-10000 10000]
+ * @param   pwmWidth   Motor power value [0 10000]
  */
-void lldControlSetRawMotorPower(int64_t pwmWidth)
+void lldControlSetRawMotorPower(int64_t pwmWidth, bool direction)
 {
-    pwmWidth = ValLimit(pwmWidth, pwmper*(-1), pwmper);
-    if (pwmWidth < 0)
+    pwmWidth = ValLimit(pwmWidth, 0, pwmper);
+    if (direction == 0)
     {
         pwmDisableChannel(&PWMD1, 0);
-        pwmEnableChannel(&PWMD1, 1, pwmWidth*(-1));
+        pwmEnableChannel(&PWMD1, 1, pwmWidth);
     }
     else
     {
