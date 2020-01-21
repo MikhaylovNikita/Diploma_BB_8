@@ -9,9 +9,7 @@
 #define MOTOR_RAW_POWER_TEST_ROUTINE 3
 #define ENCODER_TEST_ROUTINE 4
 
-#define TEST_ROUTINE ENCODER_TEST_ROUTINE
-
-void serialStartInit(void);
+#define TEST_ROUTINE MOTOR_DIR_TEST_ROUTINE
 
 void extStartInit(void);
 

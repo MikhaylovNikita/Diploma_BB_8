@@ -1,26 +1,5 @@
 #include <common.h>
 
-static bool serialInitialized = false;
-
-static const SerialConfig sd7conf = {
-    .speed  = 115200,
-    .cr1    = 0,
-    .cr2    = 0,
-    .cr3    = 0
-};
-
-void serialStartInit(void)
-{
-    if (serialInitialized)
-        return;
-
-    palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
-    palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
-    sdStart(&SD7, &sd7conf);
-
-    serialInitialized = true;
-}
-
 static bool extInitialized = false;
 
 void extStartInit(void)

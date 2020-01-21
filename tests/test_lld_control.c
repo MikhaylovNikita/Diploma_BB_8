@@ -8,6 +8,27 @@ uint16_t raw_delta = 1000;
 uint8_t delta = 10;
 uint8_t test_duty = 70;
 
+static bool serialInitialized = false;
+
+static const SerialConfig sd7conf = {
+    .speed  = 115200,
+    .cr1    = 0,
+    .cr2    = 0,
+    .cr3    = 0
+};
+
+void serialControlInit(void)
+{
+    if (serialInitialized)
+        return;
+
+    palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(8));
+    palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(8));
+    sdStart(&SD7, &sd7conf);
+
+    serialInitialized = true;
+}
+
 /**
  * @brief   Test motors direction
  */
@@ -15,7 +36,7 @@ void lldTestDirectionMotorPower(void)
 {
     systime_t time = chVTGetSystemTime();
     lldControlInit();
-    serialStartInit();
+    serialControlInit();
     test_duty = ValLimit(test_duty, 0, 100);
     while (true)
     {
@@ -45,7 +66,7 @@ void lldTestRawMotorPower(void)
 {
     systime_t time = chVTGetSystemTime();
     lldControlInit();
-    serialStartInit();
+    serialControlInit();
     raw_delta = ValLimit(raw_delta, 0, pwmper);
     while (true)
     {
@@ -91,7 +112,7 @@ void lldTestMotorPower(void)
 {
     systime_t time = chVTGetSystemTime();
     lldControlInit();
-    serialStartInit();
+    serialControlInit();
     delta = ValLimit(delta, 0, 100);
     while (true)
     {
