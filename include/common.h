@@ -11,6 +11,11 @@
 
 #define TEST_ROUTINE MOTOR_DIR_TEST_ROUTINE
 
+/**
+ * @brief   Initialize EXT driver
+ * @note    Safe for repeated calls
+ * @note    Must be called before configuring
+ */
 void extStartInit(void);
 
 /**

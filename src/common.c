@@ -2,6 +2,11 @@
 
 static bool extInitialized = false;
 
+/**
+ * @brief   Initialize EXT driver
+ * @note    Safe for repeated calls
+ * @note    Must be called before configuring
+ */
 void extStartInit(void)
 {
     if (extInitialized)
