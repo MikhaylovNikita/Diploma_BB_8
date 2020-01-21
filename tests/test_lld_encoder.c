@@ -5,6 +5,8 @@
 int32_t ticks_test = 0;
 bool dir_test = 0;
 int16_t revs_test = 0;
+int16_t rpm_test = 0;
+int32_t tps_test = 0;
 
 static bool serialInitialized = false;
 
@@ -32,12 +34,17 @@ void lldTestEncoder(void)
     systime_t time = chVTGetSystemTime();
     lldEncoderInit();
     serialEncoderInit();
+    RPMInit();
+    TPSInit();
     while(true)
     {
         dir_test = lldEncoderGetDirection();
-        revs_test = (int)lldEncoderGetRevs();
+        revs_test = (int16_t)lldEncoderGetRevs();
         ticks_test = lldEncoderGetTicks();
-        chprintf(((BaseSequentialStream *)&SD7), "D:%d R:%d T:%d\n\r", dir_test, revs_test, ticks_test);
+        rpm_test = (int16_t)lldEncoderGetRPM();
+        tps_test = (int32_t)lldEncoderGetTPS();
+        chprintf(((BaseSequentialStream *)&SD7), "D:%d R:%d T:%d RPM:%d TPS:%d\n\r",
+                 dir_test, revs_test, ticks_test, rpm_test, tps_test);
         time = chThdSleepUntilWindowed(time, time + MS2ST(100));
     }
 }

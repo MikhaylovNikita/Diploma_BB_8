@@ -3,6 +3,8 @@
 
 #define PWM1_CH0 PAL_LINE(GPIOE, 9)
 #define PWM1_CH1 PAL_LINE(GPIOE, 11)
+#define PWM1_CH2 PAL_LINE(GPIOE, 13)
+#define PWM1_CH3 PAL_LINE(GPIOE, 14)
 
 static PWMConfig pwm1conf = {
     .frequency = pwmfreq,
@@ -11,8 +13,8 @@ static PWMConfig pwm1conf = {
     .channels = {
         {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
         {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL},
-        {.mode = PWM_OUTPUT_DISABLED, .callback = NULL}
+        {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL},
+        {.mode = PWM_OUTPUT_ACTIVE_HIGH, .callback = NULL}
     },
     .cr2 = 0,
     .dier = 0
@@ -31,6 +33,8 @@ void lldControlInit(void)
 
     palSetLineMode(PWM1_CH0, PAL_MODE_ALTERNATE(1));
     palSetLineMode(PWM1_CH1, PAL_MODE_ALTERNATE(1));
+    palSetLineMode(PWM1_CH2, PAL_MODE_ALTERNATE(1));
+    palSetLineMode(PWM1_CH3, PAL_MODE_ALTERNATE(1));
     pwmStart(&PWMD1, &pwm1conf);
 
     isInitialized = true;
