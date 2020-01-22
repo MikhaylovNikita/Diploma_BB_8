@@ -1,8 +1,10 @@
 PROJECT_MODULES	= src/lld_control.c \
-                  src/lld_encoder.c
+                  src/lld_encoder.c \
+                  src/odometry.c
 
 PROJECT_TESTS	= tests/test_lld_control.c \
-                  tests/test_lld_encoder.c
+                  tests/test_lld_encoder.c \
+                  tests/test_odometry.c    \
 # C source files
 PROJECT_CSRC 	= src/main.c src/common.c $(PROJECT_MODULES) $(PROJECT_TESTS)
 # C++ source files

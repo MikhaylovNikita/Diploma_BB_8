@@ -28,5 +28,7 @@ static void testRoutines(void)
         lldTestRawMotorPower();
     #elif (TEST_ROUTINE == ENCODER_TEST_ROUTINE)
         lldTestEncoder();
+    #elif (TEST_ROUTINE == ODOMETRY_TEST_ROUTINE)
+        odometryTestMotorSpeed();
     #endif
 }
