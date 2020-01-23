@@ -31,8 +31,9 @@ void serialControlInit(void)
 
 /**
  * @brief   Test motors direction
+ * @param   motor_num   Motor number
  */
-void lldTestDirectionMotorPower(void)
+void lldTestDirectionMotorPower(uint8_t motor_num)
 {
     systime_t time = chVTGetSystemTime();
     lldControlInit();
@@ -52,7 +53,7 @@ void lldTestDirectionMotorPower(void)
                 break;
         }
         val = ValLimit(val, -100, 100);
-        lldControlSetMotorPower(val);
+        lldControlSetMotorPower(val, motor_num);
         chprintf(((BaseSequentialStream *)&SD7), "%d\r\n", val);
         time = chThdSleepUntilWindowed(time, time + MS2ST(250));
     }
@@ -61,8 +62,9 @@ void lldTestDirectionMotorPower(void)
 /**
  * @brief   Test motors rotation speed
  * @note    Changing raw values of pwm dutycycle
+ * @param   motor_num   Motor number
  */
-void lldTestRawMotorPower(void)
+void lldTestRawMotorPower(uint8_t motor_num)
 {
     systime_t time = chVTGetSystemTime();
     lldControlInit();
@@ -98,7 +100,7 @@ void lldTestRawMotorPower(void)
                 break;
         }
         val = ValLimit(val, 0, pwmper);
-        lldControlSetRawMotorPower(val, direction);
+        lldControlSetRawMotorPower(val, direction, motor_num);
         chprintf(((BaseSequentialStream *)&SD7), "%d    %d\r\n", val, direction);
         time = chThdSleepUntilWindowed(time, time + MS2ST(250));
     }
@@ -107,8 +109,9 @@ void lldTestRawMotorPower(void)
 /**
  * @brief   Test motors rotation speed
  * @note    Changing percent values of pwm dutycycle
+ * @param   motor_num   Motor number
  */
-void lldTestMotorPower(void)
+void lldTestMotorPower(uint8_t motor_num)
 {
     systime_t time = chVTGetSystemTime();
     lldControlInit();
@@ -128,7 +131,7 @@ void lldTestMotorPower(void)
                 break;
         }
         val = ValLimit(val, -100, 100);
-        lldControlSetMotorPower(val);
+        lldControlSetMotorPower(val, motor_num);
         chprintf(((BaseSequentialStream *)&SD7), "%d\r\n", val);
         time = chThdSleepUntilWindowed(time, time + MS2ST(250));
     }

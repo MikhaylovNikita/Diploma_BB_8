@@ -21,11 +21,11 @@ int main(void)
 static void testRoutines(void)
 {
     #if (TEST_ROUTINE == MOTOR_DIR_TEST_ROUTINE)
-        lldTestDirectionMotorPower();
+        lldTestDirectionMotorPower(3);
     #elif (TEST_ROUTINE == MOTOR_POWER_TEST_ROUTINE)
-        lldTestMotorPower();
+        lldTestMotorPower(3);
     #elif (TEST_ROUTINE == MOTOR_RAW_POWER_TEST_ROUTINE)
-        lldTestRawMotorPower();
+        lldTestRawMotorPower(3);
     #elif (TEST_ROUTINE == ENCODER_TEST_ROUTINE)
         lldTestEncoder();
     #elif (TEST_ROUTINE == ODOMETRY_TEST_ROUTINE)

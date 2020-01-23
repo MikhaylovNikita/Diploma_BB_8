@@ -5,20 +5,23 @@
 
 /**
  * @brief   Test motors direction
+ * @param   motor_num   Motor number
  */
-void lldTestDirectionMotorPower(void);
+void lldTestDirectionMotorPower(uint8_t motor_num);
 
 /**
  * @brief   Test motors rotation speed
  * @note    Changing raw values of pwm dutycycle
+ * @param   motor_num   Motor number
  */
-void lldTestRawMotorPower(void);
+void lldTestRawMotorPower(uint8_t motor_num);
 
 /**
  * @brief   Test motors rotation speed
  * @note    Changing percent values of pwm dutycycle
+ * @param   motor_num   Motor number
  */
-void lldTestMotorPower(void);
+void lldTestMotorPower(uint8_t motor_num);
 
 /**
  * @brief   Test encoder direction, revolutions and ticks counter value
