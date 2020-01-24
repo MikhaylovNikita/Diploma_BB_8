@@ -36,4 +36,10 @@ void lldTestEncoder(void);
  */
 void odometryTestMotorSpeed(void);
 
+/**
+ * @brief   Test MPU6050 output values of angle and acceleration
+ * @note    Return raw values
+ */
+void MPU6050Test(void);
+
 #endif /* INCLUDE_TESTS_H_ */

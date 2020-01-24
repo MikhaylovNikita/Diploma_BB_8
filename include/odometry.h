@@ -4,10 +4,11 @@
 #include <lld_encoder.h>
 
 #define VT_PERIOD_MS 10
-#define RPS (1000 / VT_PERIOD_MS)
-#define RPM (60000 / VT_PERIOD_MS)
 
-typedef uint16_t odometrySpeedUnit_t;
+typedef enum {
+    RPS = 1000 / VT_PERIOD_MS,
+    RPM = 60000 / VT_PERIOD_MS
+} odometrySpeedUnit_t;
 
 /**
  * @brief   Initialize encoder and virtual timer to count encoder revolutions

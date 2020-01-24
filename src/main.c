@@ -30,5 +30,7 @@ static void testRoutines(void)
         lldTestEncoder();
     #elif (TEST_ROUTINE == ODOMETRY_TEST_ROUTINE)
         odometryTestMotorSpeed();
+    #elif (TEST_ROUTINE == MPU6050_TEST_ROUTINE)
+        MPU6050Test();
     #endif
 }
